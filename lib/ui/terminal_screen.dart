@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter/services.dart';
@@ -42,23 +43,27 @@ class ShellSession {
   static Future<ShellSession> start(AgentController agent, String cwd, {String? title, bool linux = false}) async {
     final env = await agent.client.environment();
     final home = env['HOME']!;
-    // mksh reads $ENV for interactive shells: a short prompt and a few aliases.
+    final windows = defaultTargetPlatform == TargetPlatform.windows;
+    // A short prompt and a few aliases. The rc is read via $ENV where the shell
+    // honours it (mksh on Android, bash on Linux); Windows shells ignore it.
     final rc = File('$home/.andropirc');
-    rc.writeAsStringSync(r'''
+    if (!windows) {
+      rc.writeAsStringSync(r'''
 PS1='${PWD##*/} $ '
 alias ll='ls -la'
 alias la='ls -A'
 alias gs='git status'
 ''');
+    }
     final pty = Pty.start(
-      '/system/bin/sh',
-      arguments: ['-i'],
+      windows ? 'powershell.exe' : '/bin/sh',
+      arguments: windows ? const <String>[] : const <String>['-i'],
       workingDirectory: cwd,
-      environment: {...env, 'TERM': 'xterm-256color', 'ENV': rc.path},
+      environment: {...env, 'TERM': 'xterm-256color', if (!windows) 'ENV': rc.path},
       rows: 40,
       columns: 80,
     );
-    final session = ShellSession._(pty, cwd, title ?? (linux ? 'linux' : 'sh'), linux: linux);
+    final session = ShellSession._(pty, cwd, title ?? (linux ? 'linux' : (windows ? 'powershell' : 'sh')), linux: linux);
     session._wire();
     return session;
   }

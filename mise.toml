@@ -15,7 +15,21 @@ android-sdk = "23.0"
 node = "22"
 # tool/bundle_runtime.py (with `lief`) repackages the Termux runtime.
 python = "3.12"
+# Desktop releases (`mise run release`) run CMake + Ninja for the Windows and
+# Linux runners. Pinned here so both hosts get them from this checkout only;
+# on Linux the GTK 3 development libraries come from the distro itself.
+cmake = "3.31.12"
+ninja = "1.13.2"
 
 # `mise run check` -> analyze + test with the versions above.
 [tasks.check]
 run = ["flutter analyze", "flutter test"]
+
+# `mise run release` -> build and package the desktop app for the host it
+# runs on. Run it on Windows for the Windows build, inside the WSL distro
+# for the Linux build:
+#   release/andropi-<version>-windows-x64.zip
+#   release/andropi-<version>-linux-x64.tar.gz
+[tasks.release]
+description = "Build + package the desktop release for this host"
+run = "dart tool/release.dart"

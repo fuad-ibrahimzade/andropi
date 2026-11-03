@@ -141,7 +141,22 @@ class Appearance extends ValueNotifier<ThemeMode> {
   }
 
   static final instance = Appearance._();
-  static final _file = File('/data/data/com.imtaqin.andropi/files/ui.json');
+
+  /// Where the UI prefs persist. On Android that's the app's files dir; on a
+  /// desktop it's the same per-user data dir the agent uses, so the welcome
+  /// screen and theme are remembered between launches there too.
+  static File get _file {
+    if (Platform.isAndroid) return File('/data/data/com.imtaqin.andropi/files/ui.json');
+    final home = Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '.';
+    final String base;
+    if (Platform.isWindows) {
+      base = Platform.environment['APPDATA'] ?? '$home${Platform.pathSeparator}AppData${Platform.pathSeparator}Roaming';
+    } else {
+      final xdg = Platform.environment['XDG_DATA_HOME'];
+      base = (xdg != null && xdg.isNotEmpty) ? xdg : '$home${Platform.pathSeparator}.local${Platform.pathSeparator}share';
+    }
+    return File('$base${Platform.pathSeparator}andropi${Platform.pathSeparator}ui.json');
+  }
 
   bool onboarded = false;
   double textScale = 1;
@@ -173,6 +188,7 @@ class Appearance extends ValueNotifier<ThemeMode> {
 
   void _save() {
     try {
+      _file.parent.createSync(recursive: true);
       _file.writeAsStringSync(
         jsonEncode({
           'theme': value.name,
